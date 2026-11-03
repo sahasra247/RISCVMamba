@@ -141,8 +141,8 @@ CFU Playground bundles the hardware flow: LiteX builds the SoC, VexRiscv is the 
 **B · ISA & Software**
 
 - [x] Build the RISC-V GNU toolchain for rv32im with newlib; build Spike and the proxy kernel.
-- [ ] Run hello-world on Spike, then a bare-metal program that reads the cycle and instret counters.
-- [ ] Create the Git repository with the layout in "How we work".
+- [x] Run hello-world on Spike, then a bare-metal program that reads the cycle and instret counters.
+- [x] Create the Git repository with the layout in "How we work".
 
 **C · Model & Reference**
 
