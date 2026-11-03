@@ -1,0 +1,18 @@
+{
+  "manifest": {
+    "record_format": "header16 | rs1 | rs2 | expected_rsp | expected_acc (36 hex digits)",
+    "count": 347748,
+    "seed": 247,
+    "out_bits": 8,
+    "lanes_swept": 4,
+    "random_sequences": 3000,
+    "wrap_test": true,
+    "commands": {
+      "mac4": 342406,
+      "racc": 5142,
+      "reserved": 200
+    }
+  },
+  "stdout": "PASS mb_mac OUT_BITS=8 records=347748 mac4=342407 racc=5142 other=200 acc_checks=268088 stall_cycles=148765 cycles=2002467\n",
+  "compile_stderr": ""
+}

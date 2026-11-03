@@ -1,0 +1,12 @@
+date,commit_hash,build_target,kernel_or_test,sw_cycles,cfu_cycles,speedup,sw_instret,cfu_instret,inst_reduction_pct,luts,ffs,dsps,bram_kb,fmax_mhz,status
+2026-11-03,git-head,Renode_VexRiscv,RMSNorm,1420,1418,1.00,1102,1102,0.0%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,in_proj,12480,1860,6.71,9840,1420,85.6%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,conv1d,3840,720,5.33,2960,540,81.8%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,x_proj,5620,910,6.18,4380,710,83.8%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,dt_proj,4190,830,5.05,3250,640,80.3%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,selective_scan,28450,2340,12.16,21980,1780,91.9%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,out_proj,6120,950,6.44,4760,730,84.7%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,TOTAL_TOKEN,62120,9028,6.88,48272,6922,85.7%,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,10_token_sequence,-,-,-,-,-,-,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Renode_VexRiscv,sequence_reset,-,-,-,-,-,-,-,-,-,-,50.0,PASS
+2026-11-03,git-head,Artix7_100T_OOC,Xmamba_CFU_Top,-,-,-,-,-,-,1842,1250,5,1.5,84.2,PASS

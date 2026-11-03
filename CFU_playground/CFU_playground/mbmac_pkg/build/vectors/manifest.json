@@ -1,0 +1,14 @@
+{
+  "record_format": "header16 | rs1 | rs2 | expected_rsp | expected_acc (36 hex digits)",
+  "count": 347748,
+  "seed": 247,
+  "out_bits": 8,
+  "lanes_swept": 4,
+  "random_sequences": 3000,
+  "wrap_test": true,
+  "commands": {
+    "mac4": 342406,
+    "racc": 5142,
+    "reserved": 200
+  }
+}
