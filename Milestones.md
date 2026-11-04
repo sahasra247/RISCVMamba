@@ -141,8 +141,8 @@ CFU Playground bundles the hardware flow: LiteX builds the SoC, VexRiscv is the 
 **B · ISA & Software**
 
 - [x] Build the RISC-V GNU toolchain for rv32im with newlib; build Spike and the proxy kernel.
-- [ ] Run hello-world on Spike, then a bare-metal program that reads the cycle and instret counters.
-- [ ] Create the Git repository with the layout in "How we work".
+- [x] Run hello-world on Spike, then a bare-metal program that reads the cycle and instret counters.
+- [x] Create the Git repository with the layout in "How we work".
 
 **C · Model & Reference**
 
@@ -179,11 +179,11 @@ Also estimate the weight bytes read per token against the multiply-accumulates. 
 
 **B · ISA & Software**
 
-- [ ] Write the C inference engine: bare-metal, no malloc, weights linked in as a binary blob generated from the .npy files.
-- [ ] Make the fixed-point version with the formats from Decision 3, including software lookup tables for exp, SiLU and softplus.
-- [ ] Instrument each kernel with instret counters; produce the profile table (instructions per token, per kernel, % of total).
-- [ ] Give Model & Reference a skeleton for the NumPy step function: signatures plus one worked layer.
-- [ ] Draft ISA v0 from the profile and send it to Hardware for review (20 Nov).
+- [x] Write the C inference engine: bare-metal, no malloc, weights linked in as a binary blob generated from the .npy files.
+- [x] Make the fixed-point version with the formats from Decision 3, including software lookup tables for exp, SiLU and softplus.
+- [x] Instrument each kernel with instret counters; produce the profile table (instructions per token, per kernel, % of total).
+- [x] Give Model & Reference a skeleton for the NumPy step function: signatures plus one worked layer.
+- [ ] Draft ISA v0 from the profile and send it to Hardware for review (20 Nov). *(Draft done as v1 in `spec/xmamba-isa.md`; still to send to Hardware.)*
 
 **A · Hardware**
 
@@ -227,11 +227,11 @@ By 11 Dec, the full model runs on Spike using Xmamba, its output is bit-identica
 
 **B · ISA & Software**
 
-- [ ] Write ISA spec v1: encodings, packing, rounding, saturation, internal state and latency targets.
-- [ ] Implement xmamba_ref.c and the Spike extension, including disassembly names so traces are readable.
-- [ ] Write xmamba.h intrinsics (inline functions around .insn) and port all kernels to use them.
-- [ ] Check outputs against the C baseline (bit-identical) and the NumPy reference.
-- [ ] Report instruction counts per kernel and end to end: baseline, each instruction group alone, and full Xmamba.
+- [x] Write ISA spec v1: encodings, packing, rounding, saturation, internal state and latency targets. *(Draft; latency targets need Hardware's confirmation.)*
+- [x] Implement xmamba_ref.c and the Spike extension, including disassembly names so traces are readable.
+- [x] Write xmamba.h intrinsics (inline functions around .insn) and port all kernels to use them.
+- [x] Check outputs against the C baseline (bit-identical) and the NumPy reference.
+- [x] Report instruction counts per kernel and end to end: baseline, each instruction group alone, and full Xmamba. *(Random weights; rerun with the trained model.)*
 - [ ] Freeze ISA v1 together with Hardware on 11 Dec.
 
 **A · Hardware**
