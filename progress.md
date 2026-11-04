@@ -44,7 +44,7 @@ The team consists of five roles (Members A through E) as defined in `Milestones.
   - Built exhaustive SystemVerilog testbench (`tb_mb_mac.sv`) passing **347,748 vector regression tests**.
   - Built prototype full CFU (`cfu.v`) implementing MAC, nonlinear table lookups, and the stateful scan engine.
   - Implemented single-token SoC simulation using CFU Playground, Renode, and Verilator (`token_test.cc`, `verify_token.py`).
-  - Documented the CPU–CFU handshake interface timing in `CFU_playground/CFU_playground/mbmac_pkg/docs/cfu_handshake_summary.md`.
+  - Documented the CPU–CFU handshake interface timing in `docs/cfu_handshake_summary.md`.
 - **Remaining Tasks:**
   - **Review `spec/xmamba-isa.md`** (§8 latency targets & §9 open architectural questions) before the **20 Nov gate**.
   - Update `mb.racc` RTL to ISA v1 semantics: 32-bit return value (`OUT_BITS=32`), signed 6-bit shift `rs1[5:0]` supporting left-shifting.
@@ -95,7 +95,7 @@ The team consists of five roles (Members A through E) as defined in `Milestones.
 
 - **Completed:**
   - Unit tests for MAC golden reference and cycle-accurate RTL model (`hw/mb_mac/tests/`).
-  - Comparison scripts and initial results table (`CFU_playground/mbmac_pkg/results/results.csv`).
+  - Comparison scripts and initial results table (`results/results.csv`).
   - Instruction-counting analysis tools (`sw/tools/compare_counts.py`).
 - **Remaining Tasks:**
   - Verify that the toolchain setup from `sw/README.md` reproduces cleanly on a second workstation.
@@ -138,7 +138,7 @@ Measurements gathered for a $d=256$, $L=4$, $N=16$, $E=2$, $R=16$ model (1.82M p
 
 ---
 
-## 5. Repository Structure & Branch Integration
+## 5. Repository Structure & Canonical Layout
 
 The repository layout follows the canonical structure specified in `Milestones.md`:
 
@@ -148,43 +148,49 @@ riscv-mamba/
 ├── spec/            # Hardware/software interface contract: xmamba-isa.md
 ├── sw/              # Bare-metal C runtime, engines (mamba_f32.c, mamba_q.c), intrinsics
 ├── sim/spike/       # Spike extension (xmamba_spike.cc) and C reference (xmamba_ref.c)
-├── hw/mb_mac/       # MAC unit Verilog, testbench, and verification scripts
-├── CFU_playground/  # Single-token prototype package, Renode demo, Verilator co-sim
-├── test/            # Test scripts and compare utilities
-├── results/         # Results logs and instruction count CSVs
-├── docs/            # Project documentation and interface summaries
+├── hw/              # Verilog RTL (rtl/), testbenches (tb/), SoC integration (soc/), models
+├── test/            # Master regression (run_all.sh), directed tests, compare.py
+├── results/         # Benchmark results (results.csv), Spike instruction count logs
+├── docs/            # CFU handshake summary, token plan report, meeting notes
 ├── Milestones.md    # Master milestone plan, reading list, and task checklist
 ├── progress.md      # This progress tracking document
 └── report.md        # Work log for Stages 0, 1, and 2
 ```
 
-Both `origin/main` and `origin/b/stage0-baremetal` are unified in `main` (merge commit `a804fc7`).
+Both `origin/main` and `origin/b/stage0-baremetal` are unified in `main`.
 
 ---
 
 ## 6. How to Run & Verify All Tests
 
-### 1. Python Models & Fixed-Point Verification
+### 1. One-Line Master Regression
+```bash
+bash test/run_all.sh             # Executes all software, Spike, and hardware verification suites
+```
+
+### 2. Python Models & Fixed-Point Verification
 ```bash
 python3 model/mamba_step.py      # Float recurrent step self-check (PASS)
 python3 model/mamba_fixed.py     # Integer/Q-format recipe & error analysis (PASS)
 ```
 
-### 2. Spike Simulator Extension & C Reference Checks
+### 3. Spike Simulator Extension & C Reference Checks
 ```bash
 make -C sim/spike check          # Verifies xmamba_ref.c vs Python on 200k+ inputs (PASS)
 ```
 
-### 3. Bare-Metal RV32IM C Engines on Spike
+### 4. Bare-Metal RV32IM C Engines on Spike
 ```bash
 make -C sw run                   # Runs hello world and cycle/instret counter tests (PASS)
 make -C sw compare               # Runs all 4 builds on Spike and prints ablation table (PASS)
 ```
 
-### 4. Hardware Unit Tests & RTL Simulation
+### 5. Hardware Unit Tests & RTL Simulation
 ```bash
-cd hw/mb_mac && python3 -m unittest discover -s tests -v   # MAC unit tests (PASS)
-cd CFU_playground/CFU_playground/mbmac_pkg && python3 -m unittest discover -s tests -v # Prototype tests (PASS)
+cd hw && python3 -m unittest discover -s tests -v   # Hardware unit tests (PASS)
+cd hw && python3 -m mbmac.xmamba --check            # Lookup table verification (PASS)
+cd hw && python3 -m mbmac.verify --quick            # RTL quick verification (PASS)
+cd hw && python3 -m mbmac.verify_token              # Token pipeline co-simulation (PASS)
 ```
 
 ---

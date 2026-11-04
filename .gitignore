@@ -1,6 +1,26 @@
+# Build and temporary output directories
 build/
+**/build/
 __pycache__/
+**/*.pyc
 *.pyc
+
+# Simulation and wave files
 *.vcd
 *.vvp
+
+# Object, library, and dependency files
+*.o
+*.a
+*.d
+*.so
+*.elf
+*.dis
+
+# Generated binary and verilated artifacts
+token_host
+VCfu
+VCfu__*
+
+# Tool artifacts
 .claude/
