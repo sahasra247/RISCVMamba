@@ -34,8 +34,10 @@ Run the self-check:  python3 model/mamba_step.py
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from pathlib import Path
 
 import numpy as np
@@ -113,15 +115,119 @@ def random_weights(cfg: MambaConfig, seed: int = 0) -> dict[str, np.ndarray]:
     return w
 
 
-def load_weights(path: str) -> dict[str, np.ndarray]:
-    """Load the exported .npy weights folder into a dict of float32 tensors (Member C)."""
-    p = Path(path)
-    weights = {}
-    for f in p.glob("*.npy"):
-        weights[f.stem] = np.load(f).astype(np.float32)
-    if "lm_head.weight" not in weights and "backbone.embeddings.weight" in weights:
-        weights["lm_head.weight"] = weights["backbone.embeddings.weight"]
-    return weights
+def load_config(path_or_dir: str | Path) -> MambaConfig:
+    """Load MambaConfig from a JSON file or directory containing config.json.
+    Supports both Hugging Face Mamba keys and our native MambaConfig keys.
+    """
+    p = Path(path_or_dir)
+    cfg_file = p if p.is_file() else p / "config.json"
+    if not cfg_file.is_file():
+        raise FileNotFoundError(f"Config file not found at {cfg_file}")
+    with open(cfg_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    d_model = data.get("d_model", data.get("hidden_size", 256))
+    n_layer = data.get("n_layer", data.get("num_hidden_layers", data.get("n_layers", 4)))
+    vocab_size = data.get("vocab_size", data.get("vocab", 256))
+    d_state = data.get("d_state", data.get("state_size", 16))
+    expand = data.get("expand", 2)
+    d_conv = data.get("d_conv", data.get("conv_kernel", 4))
+    dt_rank = data.get("dt_rank", data.get("time_step_rank", 0))
+    eps = data.get("eps", data.get("rms_norm_eps", data.get("layer_norm_epsilon", 1e-5)))
+
+    return MambaConfig(
+        d_model=int(d_model),
+        n_layer=int(n_layer),
+        vocab_size=int(vocab_size),
+        d_state=int(d_state),
+        expand=int(expand),
+        d_conv=int(d_conv),
+        dt_rank=int(dt_rank),
+        eps=float(eps),
+    )
+
+
+def load_weights(path_or_dir: str | Path) -> dict[str, np.ndarray]:
+    """Load weights into a dictionary mapping parameter names to float32 NumPy arrays.
+
+    Supported formats:
+      1. Directory of <tensor_name>.npy files
+      2. Single .npz archive containing all tensors
+      3. PyTorch checkpoint (.pt, .pth, .bin) if torch is installed
+    """
+    p = Path(path_or_dir)
+    weights: dict[str, np.ndarray] = {}
+
+    if p.is_dir():
+        npy_files = list(p.glob("*.npy"))
+        if not npy_files:
+            npz_files = list(p.glob("*.npz"))
+            if npz_files:
+                return load_weights(npz_files[0])
+            raise FileNotFoundError(f"No .npy or .npz files found in directory {p}")
+        for f in npy_files:
+            key = f.stem
+            weights[key] = np.load(f).astype(np.float32)
+
+    elif p.is_file():
+        suffix = p.suffix.lower()
+        if suffix == ".npz":
+            with np.load(p) as data:
+                for k in data.files:
+                    weights[k] = data[k].astype(np.float32)
+        elif suffix in (".pt", ".pth", ".bin"):
+            try:
+                import torch
+            except ImportError:
+                raise ImportError(
+                    f"PyTorch is required to load {p}. Please install torch or export weights to .npy"
+                )
+            state = torch.load(p, map_location="cpu", weights_only=False)
+            if isinstance(state, dict):
+                if "state_dict" in state:
+                    state = state["state_dict"]
+                elif "model" in state:
+                    state = state["model"]
+            for k, v in state.items():
+                if hasattr(v, "cpu"):
+                    weights[k] = v.detach().cpu().numpy().astype(np.float32)
+                elif isinstance(v, np.ndarray):
+                    weights[k] = v.astype(np.float32)
+        else:
+            raise ValueError(f"Unsupported weight file format: {p}")
+    else:
+        raise FileNotFoundError(f"Path does not exist: {p}")
+
+    # Canonicalize keys: strip leading 'model.' prefix if present
+    cleaned = {}
+    for k, v in weights.items():
+        clean_k = k[6:] if k.startswith("model.") else k
+        cleaned[clean_k] = v
+
+    return cleaned
+
+
+def save_weights(weights: dict[str, np.ndarray], output_dir: str | Path, cfg: MambaConfig | None = None) -> None:
+    """Save weights dictionary to a directory as individual .npy files,
+    along with an optional config.json.
+    """
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    for k, v in weights.items():
+        np.save(out / f"{k}.npy", v.astype(np.float32))
+    if cfg is not None:
+        cfg_dict = {
+            "d_model": cfg.d_model,
+            "n_layer": cfg.n_layer,
+            "vocab_size": cfg.vocab_size,
+            "d_state": cfg.d_state,
+            "expand": cfg.expand,
+            "d_conv": cfg.d_conv,
+            "dt_rank": cfg.dt_rank,
+            "eps": cfg.eps,
+        }
+        with open(out / "config.json", "w", encoding="utf-8") as f:
+            json.dump(cfg_dict, f, indent=2)
 
 
 def check_shapes(w: dict[str, np.ndarray], cfg: MambaConfig) -> None:
