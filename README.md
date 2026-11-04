@@ -23,5 +23,9 @@ Arty A7-100T. See [Milestones.md](Milestones.md) for the plan and owners.
 ## Quick start
 
 ```bash
-cd sw && make run      # bare-metal hello + counter test on Spike (setup: sw/README.md)
+cd sw && make run                 # bare-metal hello + counter test on Spike (setup: sw/README.md)
+make -C sim/spike check           # Xmamba reference C == Python fixed-point model
+make -C sw compare                # baseline vs +MAC vs +MAC+NL vs full Xmamba on Spike, bit-exact
 ```
+
+ISA: [spec/xmamba-isa.md](spec/xmamba-isa.md). Work log and status: [report.md](report.md).

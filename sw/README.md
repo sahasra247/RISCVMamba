@@ -57,8 +57,57 @@ Hello from bare-metal RV32IM on Spike!
 
 `main`'s return value becomes Spike's exit code, so scripts can check it. A trap
 (illegal instruction, bad address) prints `TRAP mcause=... mepc=... mtval=...` and
-exits with 127. Stock Spike traps on our custom-0 instructions (mcause=2) until
-the Xmamba extension is added in Stage 2.
+exits with 127. Stock Spike traps on our custom-0 instructions (mcause=2); load
+the Xmamba extension (`--extlib=../sim/spike/build/libxmamba.so --extension=xmamba`)
+to run them.
+
+## Mamba engine (float, Stage 1)
+
+| Path | Purpose |
+| --- | --- |
+| `tools/export_weights.py` | Packs weights into `build/gen/weights.bin`, writes NumPy reference outputs (`ref.bin`), `model_cfg.h` and `blobs.S` |
+| `engine/mamba_f32.c` | Float engine, one token at a time; one noinline function per kernel; no malloc |
+| `engine/fmath.c` | expf, logf, log1pf, rsqrtf, SiLU, softplus (no libm on bare metal) |
+| `apps/mamba_float.c` | Runs the reference tokens; checks each layer's output, scan state h and logits on the target |
+
+```bash
+make mamba-float                                  # random weights, d=64, 2 layers, 8 tokens (~2 s)
+make mamba-float D_MODEL=256 N_LAYER=4 NTOK=2     # planned size, 1.82M params (~1 min)
+make mamba-float WEIGHTS=../model/export          # real weights: <hf name>.npy files + config.json
+```
+
+The check passes when every tensor's max |C − NumPy| / max |NumPy| is below 1e-5
+(typical: ~1e-6). The scan state h is compared directly because the residual
+stream and the D·u term can hide scan errors in the layer outputs.
+
+Float runs entirely in software on RV32IM (~430M instructions per token at the
+planned size), so this engine is the correctness reference, not the baseline we
+accelerate; the fixed-point engine is.
+
+## Fixed-point engine and Xmamba builds (Stages 1–2)
+
+| Path | Purpose |
+| --- | --- |
+| `engine/mamba_q.c` | Fixed-point engine; bit-exact with `model/mamba_fixed.py`. One source, four builds via `-DXM_MAC`, `-DXM_NL`, `-DXM_SCAN`. Counts instructions per kernel. |
+| `engine/xmamba.h` | Intrinsics: one inline function per Xmamba instruction (`.insn r CUSTOM_0, ...`) |
+| `apps/mamba_fixed.c` | Requires **every integer** (each layer's output, h, logits) to equal the Python reference; prints the profile |
+| `tools/compare_counts.py` | Turns the four logs into the instruction-count table (`--csv` for the results sheet) |
+
+```bash
+make mamba-fixed                      # software baseline (plain spike)
+make mamba-x                          # full Xmamba (spike + ../sim/spike/build/libxmamba.so)
+make compare                          # baseline, +MAC, +MAC+NL, Xmamba, then the table
+make compare D_MODEL=256 N_LAYER=4    # planned size (~3 min)
+make mamba-fixed WEIGHTS=../model/export   # trained weights, once Model & Reference exports them
+```
+
+Planned size (d=256, 4 layers): baseline 13.54M instructions/token, full Xmamba
+3.18M (4.26×), all four builds bit-exact. Table: `results/spike_instr_counts_d256_l4.csv`;
+discussion: `spec/xmamba-isa.md` §1.
+
+The engine compiles `sim/spike/xmamba_ref.c` into itself (`#include`) so the
+baseline's arithmetic helpers inline; calling them across files made the baseline
+20% slower, which would have inflated the speed-up.
 
 ## Measuring
 

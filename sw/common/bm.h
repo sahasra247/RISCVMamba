@@ -8,7 +8,7 @@
 
 void bm_putc(char c);
 void bm_puts(const char *s);                /* no trailing newline added */
-int  bm_printf(const char *fmt, ...);      /* %d %u %x %s %c, with l/ll; width and 0-pad */
+int  bm_printf(const char *fmt, ...);      /* %d %u %x %s %c, with l/ll; width, 0-pad, '-' for %s */
 void bm_exit(int code) __attribute__((noreturn));
 
 /* 64-bit counters on RV32: read hi, lo, hi again so a carry between the two

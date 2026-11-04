@@ -82,7 +82,8 @@ int bm_printf(const char *fmt, ...)
         if (*fmt != '%') { bm_putc(*fmt); continue; }
         fmt++;
         char pad = ' ';
-        int width = 0, lng = 0;
+        int width = 0, lng = 0, left = 0;
+        if (*fmt == '-') { left = 1; fmt++; }
         if (*fmt == '0') { pad = '0'; fmt++; }
         while (*fmt >= '0' && *fmt <= '9') width = width * 10 + (*fmt++ - '0');
         while (*fmt == 'l') { lng++; fmt++; }
@@ -98,7 +99,16 @@ int bm_printf(const char *fmt, ...)
             put_u64(v, *fmt == 'x' ? 16 : 10, width, pad, 0);
             break;
         }
-        case 's': { const char *s = va_arg(ap, const char *); bm_puts(s ? s : "(null)"); break; }
+        case 's': {
+            const char *s = va_arg(ap, const char *);
+            if (!s) s = "(null)";
+            int n = 0;
+            while (s[n]) n++;
+            if (!left) for (int i = n; i < width; i++) bm_putc(' ');
+            bm_puts(s);
+            if (left) for (int i = n; i < width; i++) bm_putc(' ');
+            break;
+        }
         case 'c': bm_putc((char)va_arg(ap, int)); break;
         case '%': bm_putc('%'); break;
         case '\0': fmt--; break;
