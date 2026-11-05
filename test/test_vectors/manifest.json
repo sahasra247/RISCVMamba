@@ -1,0 +1,30 @@
+{
+  "tokens": [
+    1,
+    4,
+    6,
+    1,
+    3,
+    4,
+    6,
+    0,
+    4,
+    1
+  ],
+  "num_tokens": 10,
+  "stages": [
+    "rmsnorm",
+    "in_proj",
+    "conv+silu",
+    "x_proj",
+    "dt+softplus",
+    "scan",
+    "gate",
+    "out_proj",
+    "residual",
+    "final_norm",
+    "lm_head"
+  ],
+  "format": "int32 per element",
+  "description": "Per-stage intermediate tensor outputs for verification against CFU hardware."
+}

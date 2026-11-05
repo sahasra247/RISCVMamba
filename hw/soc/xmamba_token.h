@@ -63,28 +63,39 @@ struct Fixture {
       for (unsigned col = 0; col < Cols; ++col) matrix[row][col] = next(seed, range);
   }
 
-  void init() {
-    uint32_t seed = 0x584d414d;
-    fill(embedding, seed, 24);
-    for (unsigned layer = 0; layer < kLayers; ++layer) {
-      fill(in_proj[layer], seed, 64);
-      fill(x_proj[layer], seed, 64);
-      fill(dt_proj[layer], seed, 32);
-      fill(out_proj[layer], seed, 48);
-      for (unsigned channel = 0; channel < kChannels; ++channel) {
-        for (unsigned tap = 0; tap < kConv; ++tap) conv[layer][channel][tap] = int8_t(8 * (tap + 1));
-        conv_bias[layer][channel] = next(seed, 2);
-        dt_bias[layer][channel] = int16_t(64 + 8 * channel);
-        for (unsigned state = 0; state < kStates; ++state)
-          constants[layer][channel * kStates + state] = -int16_t(128 * (state + 1) + 8 * channel);
-        constants[layer][kChannels * kStates + channel] = 256;
-      }
-      for (unsigned channel = 0; channel < kWidth; ++channel) norm[layer][channel] = int16_t(240 + 8 * channel);
-    }
-    fill(head, seed, 64);
-    for (unsigned channel = 0; channel < kWidth; ++channel) final_norm[channel] = 256;
-  }
+  void init(bool use_trained = false);
 };
+
+#include "trained_weights.h"
+
+inline void Fixture::init(bool use_trained) {
+#ifdef USE_TRAINED_MODEL
+  use_trained = true;
+#endif
+  if (use_trained) {
+    load_trained_weights(*this);
+    return;
+  }
+  uint32_t seed = 0x584d414d;
+  fill(embedding, seed, 24);
+  for (unsigned layer = 0; layer < kLayers; ++layer) {
+    fill(in_proj[layer], seed, 64);
+    fill(x_proj[layer], seed, 64);
+    fill(dt_proj[layer], seed, 32);
+    fill(out_proj[layer], seed, 48);
+    for (unsigned channel = 0; channel < kChannels; ++channel) {
+      for (unsigned tap = 0; tap < kConv; ++tap) conv[layer][channel][tap] = int8_t(8 * (tap + 1));
+      conv_bias[layer][channel] = next(seed, 2);
+      dt_bias[layer][channel] = int16_t(64 + 8 * channel);
+      for (unsigned state = 0; state < kStates; ++state)
+        constants[layer][channel * kStates + state] = -int16_t(128 * (state + 1) + 8 * channel);
+      constants[layer][kChannels * kStates + channel] = 256;
+    }
+    for (unsigned channel = 0; channel < kWidth; ++channel) norm[layer][channel] = int16_t(240 + 8 * channel);
+  }
+  fill(head, seed, 64);
+  for (unsigned channel = 0; channel < kWidth; ++channel) final_norm[channel] = 256;
+}
 
 inline uint32_t isqrt(uint32_t value) {
   uint32_t result = 0, bit = uint32_t(1) << 30;

@@ -1,6 +1,28 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <map>
+#include <string>
+#include <vector>
 #include "xmamba_token.h"
+
+static void dump_trace_json(const char* filepath, const std::map<std::string, std::vector<int32_t>>& data) {
+  FILE* fp = std::fopen(filepath, "w");
+  if (!fp) return;
+  std::fprintf(fp, "{\n");
+  bool first_key = true;
+  for (const auto& kv : data) {
+    if (!first_key) std::fprintf(fp, ",\n");
+    first_key = false;
+    std::fprintf(fp, "  \"%s\": [", kv.first.c_str());
+    for (size_t i = 0; i < kv.second.size(); ++i) {
+      std::fprintf(fp, "%s%d", (i > 0 ? ", " : ""), kv.second[i]);
+    }
+    std::fprintf(fp, "]");
+  }
+  std::fprintf(fp, "\n}\n");
+  std::fclose(fp);
+}
 
 #ifdef XMAMBA_VERILATOR
 #include "VCfu.h"
@@ -84,8 +106,10 @@ int main(int argc, char** argv) {
   if (argc != 2) return 2;
   FILE* stream = std::fopen(argv[1], "w");
   if (!stream) return 2;
+  const char* use_trained_env = std::getenv("USE_TRAINED_MODEL");
+  bool use_trained = (use_trained_env && (std::strcmp(use_trained_env, "1") == 0 || std::strcmp(use_trained_env, "true") == 0));
   Fixture fixture;
-  fixture.init();
+  fixture.init(use_trained);
   Reference baseline;
   RecordingBackend recorder;
   recorder.stream = stream;
@@ -102,6 +126,8 @@ int main(int argc, char** argv) {
   Trace expected, observed, first;
   int next = 1;
   bool state_changed = false;
+  std::map<std::string, std::vector<int32_t>> ref_dump;
+  std::map<std::string, std::vector<int32_t>> dut_dump;
   for (unsigned sequence = 0; sequence < 2; ++sequence) {
     software.reset_sequence();
     accelerated.reset_sequence();
@@ -119,6 +145,20 @@ int main(int argc, char** argv) {
                              observed.values[layer][stage][index], expected.values[layer][stage][index]);
         return 1;
       }
+      if (sequence == 0) {
+        for (unsigned layer = 0; layer < kLayers; ++layer) {
+          for (unsigned stage = 0; stage < kStageCount; ++stage) {
+            std::string key = "token_" + std::to_string(position) + "_L" + std::to_string(layer) + "_" + stage_names[stage];
+            std::vector<int32_t> r_v, d_v;
+            for (unsigned idx = 0; idx < expected.lengths[layer][stage]; ++idx) {
+              r_v.push_back(expected.values[layer][stage][idx]);
+              d_v.push_back(observed.values[layer][stage][idx]);
+            }
+            ref_dump[key] = r_v;
+            dut_dump[key] = d_v;
+          }
+        }
+      }
       if (position == 0 && sequence == 0) first = observed;
       if (position == 1 && sequence == 0) state_changed = !same_trace(first, observed);
       if (position == 0 && sequence == 1 && !same_trace(first, observed)) return 1;
@@ -128,6 +168,10 @@ int main(int argc, char** argv) {
     }
   }
   std::fclose(stream);
+  const char* ref_path = std::getenv("XMAMBA_REF_DUMP");
+  const char* dut_path = std::getenv("XMAMBA_DUT_DUMP");
+  if (ref_path) dump_trace_json(ref_path, ref_dump);
+  if (dut_path) dump_trace_json(dut_path, dut_dump);
   if (!state_changed || accelerated.step(kVocab, observed) != -1) return 1;
 #ifdef XMAMBA_VERILATOR
   std::printf("PASS live RTL token pipeline: %u commands, %llu CFU clock ticks (not CPU cycles)\n",

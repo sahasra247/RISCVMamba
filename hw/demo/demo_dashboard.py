@@ -121,7 +121,9 @@ def parse_profile_csv(raw_text: str) -> Tuple[List[Dict[str, any]], Optional[Dic
             in_csv = True
             continue
         if in_csv:
-            if not line or line.startswith("PASS") or line.startswith("FAIL"):
+            if not line:
+                continue
+            if line.startswith("PASS") or line.startswith("FAIL") or line.startswith("---") or line.startswith("Project"):
                 in_csv = False
                 continue
             parts = [p.strip() for p in line.split(",")]
