@@ -1,0 +1,7 @@
+{
+  "num_samples": 100,
+  "total_tokens": 1500,
+  "pytorch_top1_acc": 95.8,
+  "numpy_top1_acc": 95.8,
+  "agreement_pct": 100.0
+}

@@ -1,0 +1,391 @@
+spawn make TARGET=digilent_arty renode-headless
+Sim PID 40010
+
+make -C /home/sahasra/CFU-Playground/soc -f /home/sahasra/CFU-Playground/soc/common_soc.mk litex-software
+make[1]: Entering directory '/home/sahasra/CFU-Playground/soc'
+make[1]: Nothing to be done for 'litex-software'.
+make[1]: Leaving directory '/home/sahasra/CFU-Playground/soc'
+Copying tflite-micro files
+for d in tensorflow/lite tensorflow/lite/c tensorflow/lite/core/api tensorflow/lite/core/c tensorflow/lite/kernels tensorflow/lite/kernels/internal tensorflow/lite/kernels/internal/optimized tensorflow/lite/kernels/internal/reference tensorflow/lite/kernels/internal/reference/integer_ops tensorflow/lite/micro tensorflow/lite/micro/kernels tensorflow/lite/micro/memory_planner tensorflow/lite/micro/arena_allocator tensorflow/lite/micro/tflite_bridge tensorflow/lite/schema; do \
+	mkdir -p /home/sahasra/CFU-Playground/proj/xmamba/build/src/$d; \
+	/bin/cp -a `find /home/sahasra/CFU-Playground/third_party/tflite-micro/$d -maxdepth 1 -type f -not -name '*_test*' -regex '.*\.\(h\|c\|cc\)'` /home/sahasra/CFU-Playground/proj/xmamba/build/src/$d; \
+done
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/tensorflow/lite/micro/kernels/conv_test* /home/sahasra/CFU-Playground/proj/xmamba/build/src/tensorflow/lite/micro/kernels
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/tensorflow/lite/micro/kernels/depthwise_conv_test* /home/sahasra/CFU-Playground/proj/xmamba/build/src/tensorflow/lite/micro/kernels
+/bin/cp: missing destination file operand after '/home/sahasra/CFU-Playground/proj/xmamba/build/src/tensorflow/lite/micro/models'
+Try '/bin/cp --help' for more information.
+mkdir -p /home/sahasra/CFU-Playground/proj/xmamba/build/src/tensorflow/lite/micro/examples/person_detection
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/tensorflow/lite/micro/examples/person_detection/model_settings* /home/sahasra/CFU-Playground/proj/xmamba/build/src/tensorflow/lite/micro/examples/person_detection
+TfLM: copying selected third_party files
+mkdir -p /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/gemmlowp
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/third_party/gemmlowp/fixedpoint /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/gemmlowp
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/third_party/gemmlowp/internal /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/internal
+mkdir -p /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/flatbuffers/include
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/third_party/flatbuffers/include/* /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/flatbuffers/include
+mkdir -p /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/ruy/ruy/profiler
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/tflite-micro/third_party/ruy/ruy/profiler/instrumentation.h /home/sahasra/CFU-Playground/proj/xmamba/build/src/third_party/ruy/ruy/profiler
+build-dir: copying source to build dir
+/bin/cp -a /home/sahasra/CFU-Playground/common/*              /home/sahasra/CFU-Playground/proj/xmamba/build
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/mlcommons/*       /home/sahasra/CFU-Playground/proj/xmamba/build/src
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/SaxonSoc/riscv.h     /home/sahasra/CFU-Playground/proj/xmamba/build/src
+/bin/cp -a /home/sahasra/CFU-Playground/third_party/litex-donut/donut.*     /home/sahasra/CFU-Playground/proj/xmamba/build/src
+/bin/cp -a /home/sahasra/CFU-Playground/proj/xmamba/src/*                 /home/sahasra/CFU-Playground/proj/xmamba/build/src
+/bin/rm -rf			             /home/sahasra/CFU-Playground/proj/xmamba/build/_*
+make -C /home/sahasra/CFU-Playground/proj/xmamba/build all -j 16
+make[1]: Entering directory '/home/sahasra/CFU-Playground/proj/xmamba/build'
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/home/sahasra/CFU-Playground/proj/xmamba/build'
+pushd /home/sahasra/CFU-Playground/proj/xmamba/build/renode && cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_TRACE= -DTRACE_DEPTH_VAL= \
+	-DINCLUDE_DIR="/home/sahasra/CFU-Playground/proj/xmamba" -DVTOP="/home/sahasra/CFU-Playground/proj/xmamba/cfu.v" -DVIL_DIR="/home/sahasra/CFU-Playground/third_party/renode/verilator-integration-library" ${VERILATOR_PATH:+"-DUSER_VERILATOR_DIR=$VERILATOR_PATH"} \
+	-DTRACE_FILEPATH="" "/home/sahasra/CFU-Playground/common/renode-verilator-integration" && make libVtop && popd
+~/CFU-Playground/proj/xmamba/build/renode ~/CFU-Playground/proj/xmamba
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/sahasra/CFU-Playground/proj/xmamba/build/renode
+make[1]: Entering directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+make[2]: Entering directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+make[3]: Entering directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+make[4]: Entering directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+[ 10%] [34m[1mGenerating CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu_copy.cmake[0m
+[35m[1mConsolidate compiler generated dependencies of target libVtop[0m
+make[4]: Leaving directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+make[4]: Entering directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+[ 20%] [34m[1mGenerating CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu.cpp, CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu__Slow.cpp, CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu__Syms.cpp, CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu.h, CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu__Slow.h, CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu__Syms.h, CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu.cmake[0m
+[ 30%] [32mBuilding CXX object CMakeFiles/libVtop.dir/sim_main.cpp.o[0m
+[ 40%] [32mBuilding CXX object CMakeFiles/libVtop.dir/CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu.cpp.o[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/libVtop.dir/CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu__Slow.cpp.o[0m
+[ 60%] [32mBuilding CXX object CMakeFiles/libVtop.dir/CMakeFiles/libVtop.dir/Vcfu.dir/Vcfu__Syms.cpp.o[0m
+[ 70%] [32m[1mLinking CXX shared library libVtop.so[0m
+make[4]: Leaving directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+[100%] Built target libVtop
+make[3]: Leaving directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+make[2]: Leaving directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+make[1]: Leaving directory '/home/sahasra/CFU-Playground/proj/xmamba/build/renode'
+~/CFU-Playground/proj/xmamba
+/home/sahasra/CFU-Playground/scripts/generate_renode_scripts.py /home/sahasra/CFU-Playground/soc/build/digilent_arty.xmamba/csr.json digilent_arty /home/sahasra/CFU-Playground/proj/xmamba/build/renode/ --repl /home/sahasra/CFU-Playground/proj/xmamba/build/renode/digilent_arty_generated.repl
+Skipping io region: csr
+Skipping unsupported peripheral `identifier_mem` at 0xf0001000
+Skipping unsupported peripheral `leds` at 0xf0001800
+Warning: xmamba.robot was not generated, could not find /home/sahasra/CFU-Playground/proj/xmamba/xmamba.robot
+Generating Renode scripts finished
+pushd /home/sahasra/CFU-Playground/proj/xmamba/build/renode/ && /home/sahasra/CFU-Playground/third_party/renode/renode --console --disable-xwt --hide-log -e "s @digilent_arty.resc ; uart_connect sysbus.uart" && popd
+~/CFU-Playground/proj/xmamba/build/renode ~/CFU-Playground/proj/xmamba
+[?1h=[6n
+Looking for top-level menu...
+]0;Renode[0mRenode, version 1.14.0.6150 (998250fe-202311020325)
+
+
+
+[31;1m(monitor) [0ms @digilent_arty.resc ;  uart_connect sysbus.uart
+
+Looking for top-level menu...
+Redirecting the input to sysbus.uart, press <ESC> to quit...
+
+
+x *unknown*
+
+
+
+
+
+
+
+CFU Playground
+(At top level menu)
+
+
+
+
+==============
+
+
+
+ 1: TfLM Models menu
+
+
+
+ 2: Functional CFU Tests
+
+
+
+ 3: Project menu
+
+
+
+ 4: Performance Counter Tests
+
+
+
+ 5: TFLite Unit Tests
+
+
+
+ 6: Benchmarks
+
+
+
+ 7: Util Tests
+
+
+
+ 8: Embench IoT
+
+
+
+ d: Donut demo
+
+
+
+main> Sending 3...
+x *unknown*
+
+
+
+
+
+
+
+CFU Playground
+
+
+
+==============
+
+
+
+ 1: TfLM Models menu
+
+
+
+ 2: Functional CFU Tests
+
+
+
+ 3: Project menu
+
+
+
+ 4: Performance Counter Tests
+
+
+
+ 5: TFLite Unit Tests
+
+
+
+ 6: Benchmarks
+
+
+
+ 7: Util Tests
+
+
+
+ 8: Embench IoT
+
+
+
+ d: Donut demo
+
+
+
+main>Sending t...
+ 3
+
+
+
+
+
+
+
+Running Project menu
+
+
+
+
+
+
+
+Project Menu
+
+
+
+============
+
+
+
+ h: say Hello
+
+
+
+ d: mb.mac4/racc directed tests
+
+
+
+ r: mb.mac4/racc random vs software
+
+
+
+ b: mb.mac4 then mb.racc back-to-back
+
+
+
+ t: Xmamba full token: software vs CFU
+
+
+
+ s: Xmamba ten tokens and sequence reset
+
+
+
+ x: eXit to previous menu
+
+
+
+project>Sending s...
+ t
+
+
+
+
+
+
+
+Running Xmamba full token: software vs CFU
+
+
+
+Xmamba deterministic fixture: d=4 layers=2 channels=8 states=4 vocab=8
+
+
+
+[1/3] Initializing fixture & software reference...
+
+
+
+[2/3] Pre-loading constants & resetting CFU state...
+
+
+
+[3/3] Initialization complete.
+
+
+
+  -> Running software reference step...
+
+
+
+  -> Running CFU hardware accelerated step...
+
+
+
+PASS XMAMBA token=1 position=0 next=4 logits= -13 -18 -32 19 22 -10 -13 -29
+
+
+
+kernel,software_cycles,cfu_cycles,software_instret,cfu_instret
+
+
+
+rmsnorm,246,246,246,246
+
+
+
+in_proj,8920,1514,8920,1514
+
+
+
+conv+silu,6782,2130,6780,2128
+
+
+
+x_proj,7181,1488,7179,1486
+
+
+
+dt+softplus,5504,1126,5502,1124
+
+
+
+scan,13584,634,13582,632
+
+
+
+gate,1983,1061,1981,1059
+
+
+
+out_proj,2664,634,2664,634
+
+
+
+residual,84,84,84,84
+
+
+
+final_norm,112,112,112,112
+
+
+
+lm_head,2341,388,2341,388
+
+
+
+total,50390,10348,50389,10347
+
+
+
+PASS XMAMBA SINGLE TOKEN
+
+
+
+---
+
+
+
+
+
+
+
+Project Menu
+
+
+
+============
+
+
+
+ h: say Hello
+
+
+
+ d: mb.mac4/racc directed tests
+
+
+
+ r: mb.mac4/racc random vs software
+
+
+
+ b: mb.mac4 then mb.racc back-to-back
+
+
+
+ t: Xmamba full token: software vs CFU
+
+
+
+ s: Xmamba ten tokens and sequence reset
+
+
+
+ x: eXit to previous menu
+
+
+
+project>
+Finished interaction
+
+Disconnecting...
+
+Killing process 40010

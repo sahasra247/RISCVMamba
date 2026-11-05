@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 
@@ -113,10 +114,14 @@ def random_weights(cfg: MambaConfig, seed: int = 0) -> dict[str, np.ndarray]:
 
 
 def load_weights(path: str) -> dict[str, np.ndarray]:
-    """TODO (C): load the trained checkpoint (or the exported .npy folder) into
-    a dict with the names above, as float32. Add 'lm_head.weight' only if it is
-    not tied to the embeddings."""
-    raise NotImplementedError
+    """Load the exported .npy weights folder into a dict of float32 tensors (Member C)."""
+    p = Path(path)
+    weights = {}
+    for f in p.glob("*.npy"):
+        weights[f.stem] = np.load(f).astype(np.float32)
+    if "lm_head.weight" not in weights and "backbone.embeddings.weight" in weights:
+        weights["lm_head.weight"] = weights["backbone.embeddings.weight"]
+    return weights
 
 
 def check_shapes(w: dict[str, np.ndarray], cfg: MambaConfig) -> None:

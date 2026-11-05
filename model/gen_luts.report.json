@@ -1,0 +1,17 @@
+{
+  "exp": {
+    "max_abs_err": 0.025153918975622913,
+    "mean_abs_err": 0.002572829258748231,
+    "status": "PASS"
+  },
+  "silu": {
+    "max_abs_err": 0.01585142738311926,
+    "mean_abs_err": 0.0029659944454211483,
+    "status": "PASS"
+  },
+  "softplus": {
+    "max_abs_err": 0.006448050072966893,
+    "mean_abs_err": 0.0016274535588053569,
+    "status": "PASS"
+  }
+}
