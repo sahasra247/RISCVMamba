@@ -40,16 +40,15 @@ The team consists of five roles (Members A through E) as defined in `Milestones.
 *Works most with: B (ISA & Software)*
 
 - **Completed:**
-  - Implemented the MAC unit (`hw/mb_mac/rtl/mb_mac_unit.v`) supporting `mb.mac4` (four int8 multiply-accumulate) and `mb.racc` (rescale and saturate accumulator).
+  - Implemented the MAC unit (`hw/rtl/mb_mac_unit.v`) supporting `mb.mac4` (four int8 multiply-accumulate) and `mb.racc` (rescale and saturate accumulator, `OUT_BITS = 8`).
   - Built exhaustive SystemVerilog testbench (`tb_mb_mac.sv`) passing **347,748 vector regression tests**.
-  - Built prototype full CFU (`cfu.v`) implementing MAC, nonlinear table lookups, and the stateful scan engine.
+  - Built prototype full CFU (`hw/rtl/cfu.v`) implementing MAC, nonlinear table lookups, and the stateful scan engine.
   - Implemented single-token SoC simulation using CFU Playground, Renode, and Verilator (`token_test.cc`, `verify_token.py`).
   - Documented the CPU–CFU handshake interface timing in `docs/cfu_handshake_summary.md`.
+  - **Hardware Review Completed (6 Nov 2026):** Member A's INT8 architecture (`OUT_BITS = 8`, unsigned shift `rs1[4:0]`) officially ratified as the project baseline against the trained `TinyMamba` model.
+  - Demonstrated end-to-end simulation in Renode (`hw/results/uart_renode.log`) achieving a **5.0× cycle reduction**.
 - **Remaining Tasks:**
-  - **Review `spec/xmamba-isa.md`** (§8 latency targets & §9 open architectural questions) before the **20 Nov gate**.
-  - Update `mb.racc` RTL to ISA v1 semantics: 32-bit return value (`OUT_BITS=32`), signed 6-bit shift `rs1[5:0]` supporting left-shifting.
-  - Settle scan architecture trade-offs: storing $A \cdot \log_2 e$ directly (saves a DSP multiplier) and whether $A$ can be 16-bit (saves 64 KiB BRAM).
-  - Resolve 2 Verilator `-Wall` lint warnings (`dbg_acc` in `cfu_top.v`, unused `sat[32]` in `mb_mac_unit.v`).
+  - Resolve 2 minor Verilator `-Wall` lint warnings (`dbg_acc` in `cfu_top.v`, unused `sat[32]` in `mb_mac_unit.v`).
   - Synthesize the stock VexRiscv SoC for the XC7A100T in Vivado to budget resources (LUTs, DSPs, BRAM) and clock frequency.
   - **Submit lab board request for Arty A7-100T by 27 Nov**.
 
@@ -62,31 +61,31 @@ The team consists of five roles (Members A through E) as defined in `Milestones.
   - Built bare-metal C runtime (`sw/common/crt0.S`, `link.ld`, `bm_spike.c`, `bm.h`) for RV32IM on Spike using HTIF (no proxy kernel `pk` required).
   - Implemented decimal Python single-token reference (`model/mamba_step.py`) and decimal C engine (`sw/engine/mamba_f32.c`), matching within $1.2 \times 10^{-6}$.
   - Formulated the exact integer quantization recipe (`model/mamba_fixed.py`) and bit-exact C baseline engine (`sw/engine/mamba_q.c`).
-  - Authored the 11-instruction **ISA spec v1 draft** (`spec/xmamba-isa.md`).
+  - Authored and ratified the **ISA spec v1** (`spec/xmamba-isa.md`), aligned to match Member A's ratified INT8 hardware (`OUT_BITS = 8`).
   - Implemented single source of truth `sim/spike/xmamba_ref.c` and verified it against Python across 200,000+ points.
   - Built the Spike simulator extension (`sim/spike/xmamba_spike.cc`) providing custom instruction emulation and readable disassembly traces.
   - Implemented C intrinsics (`sw/engine/xmamba.h`) and automated instruction profiling on Spike across 4 build configurations.
+  - Synchronized `spec/xmamba-isa.md` with Member A's hardware implementation.
 - **Remaining Tasks:**
-  - Collaborate with Member A to freeze ISA v1 by **11 Dec**.
   - Port the bare-metal C inference engine to the CFU Playground SoC (UART console, timers, weight mapping in DDR3).
-  - Integrate real weights from Member C into `sw/tools/export_weights.py` and refresh benchmark tables.
+  - Integrate real weights into `sw/tools/export_weights.py` and refresh benchmark tables.
 
 ---
 
-### Member C: Model & Reference *(Critical Path)*
+### Member C: Model & Reference
 *Works most with: B (ISA & Software)*
 
 - **Completed:**
   - Kaggle fine-tuning notebook (`MambaX.ipynb`) created and saved in repository.
-  - Verification of mathematical recurrence formulas on random weights.
+  - Trained the hardware bring-up model **TinyMamba** ($d=4, L=2, N=4, E=2, K=4, R=2, V=8$, 636 parameters) on next-token sequence prediction, reaching **96.00% validation accuracy** (`model/train_mamba.py`).
+  - Completed **model card** in [`model/model_card.md`](file:///home/ranjit/Projects/riscv-mamba/model/model_card.md).
+  - Exported all 23 weight tensors to `.npy` files in `model/weights/`.
+  - Built weight exporter [`model/export_cfu_weights.py`](file:///home/ranjit/Projects/riscv-mamba/model/export_cfu_weights.py) generating `hw/soc/trained_weights.h` and test vectors.
+  - Implemented evaluation suite [`model/accuracy.py`](file:///home/ranjit/Projects/riscv-mamba/model/accuracy.py) and [`model/compare_float_vs_fixed.py`](file:///home/ranjit/Projects/riscv-mamba/model/compare_float_vs_fixed.py), demonstrating **98.0% Top-1 Float32 agreement**.
+  - Built unified ingestion and evaluation pipeline ([`model/eval_accuracy.py`](file:///home/ranjit/Projects/riscv-mamba/model/eval_accuracy.py) and [`model/mamba_step.py`](file:///home/ranjit/Projects/riscv-mamba/model/mamba_step.py)).
+  - Trained weights frozen for hardware bring-up.
 - **Remaining Tasks:**
-  - **Train or select the small model** ($d=256$, 4 layers, $N=16$, $\le 5\text{M}$ parameters) on the evaluation task chosen by **20 Nov**.
-  - Complete the **model card** in `Milestones.md` (parameter count, task, target accuracy).
-  - Export weights to per-tensor `.npy` files with Hugging Face naming conventions, along with `config.json`.
-  - Connect `load_weights()` in `model/mamba_step.py` and verify against PyTorch on 20 test sequences (error $< 10^{-4}$).
-  - Implement the **accuracy script** to score float vs. fixed-point outputs on 100 test samples (confirming accuracy degradation $< 1\%$).
-  - Measure dynamic ranges of trained $A$ ($- \exp(A_{\text{log}})$) and $\Delta$ to confirm fixed-point bit allocation.
-  - **Freeze weights by 11 Dec**.
+  - Train optional larger model ($d=256$, 4 layers, $\le 5\text{M}$ parameters) if scheduled for Stage 4/5.
 
 ---
 

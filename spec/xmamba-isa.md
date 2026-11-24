@@ -1,13 +1,13 @@
-# Xmamba ISA — v1 draft
+# Xmamba ISA — v1 Specification
 
 | | |
 |---|---|
-| Status | **Draft for Hardware review** (written 4 Nov 2026). Freeze target: 11 Dec 2026, by A and B together. |
-| Owner | B (ISA & Software). After the freeze, changes need A and B and must update `xmamba_ref.c`, Spike, the RTL and the tests together. |
-| Executable definition | `sim/spike/xmamba_ref.c`. Where this text and that file disagree, the file is right and the text is a bug. |
-| Bit-exact model | `model/mamba_fixed.py` (Python). `make -C sim/spike check` proves the C and Python agree. |
+| Status | **Ratified Specification** (Aligned with Member A Hardware on 6 Nov 2026). Frozen for CFU hardware and TinyMamba target. |
+| Owners | A (Hardware) and B (ISA & Software). Canonical baseline ratified following empirical verification of Member A's trained INT8 model. |
+| Executable definition | `sim/spike/xmamba_ref.c` & `hw/soc/xmamba_ref.h`. |
+| Bit-exact model | `model/mamba_fixed.py` (Python) and `hw/soc/xmamba_token.h` (C++). |
 
-Xmamba adds 11 R-type instructions on the custom-0 opcode in three groups: a **MAC unit** (int8 dot products), a **nonlinear unit** (exp, SiLU, softplus) and a **scan engine** that holds Mamba's state on-chip. The software needs no compiler changes; `sw/engine/xmamba.h` wraps each instruction in an inline function.
+Xmamba adds 11 R-type instructions on the custom-0 opcode in three groups: a **MAC unit** (int8 dot products with int8 saturated racc), a **nonlinear unit** (exp, SiLU, softplus) and a **scan engine** that holds Mamba's state on-chip. The software needs no compiler changes; `sw/engine/xmamba.h` and `hw/soc/xmamba.h` wrap each instruction in an inline function.
 
 ## 1. Why these instructions (measured profile)
 
@@ -70,37 +70,39 @@ Assembler form (no toolchain changes): `.insn r CUSTOM_0, funct3, funct7, rd, rs
 
 | Quantity | Format | Why |
 |---|---|---|
-| Residual stream x, u, z, B, C, y | Q16 int32 | range ±32768, step 1.5e-5 |
-| Linear-layer weights | int8, per-row power-of-two scale | one shift per output element (mb.racc) |
-| Linear-layer inputs | int8, power-of-two scale chosen per vector at run time | no calibration data needed; shift folds into mb.racc |
-| Δ (delta) | Q24 int32 | step sizes are ~0.001–0.1; Q16 would lose ~1.5% |
-| exp(Δ·A) | Q30 int32 | decay is often 0.999…; its distance from 1 needs bits |
-| Scan state h | Q20 int32 | accumulates small increments over many tokens |
-| A, D, conv weights, biases, norm weights | Q16 int32 | |
+| Linear-layer activations (inputs, residual stream, racc output) | int8 (sign-extended to 32-bit registers) | Validated by Member A's TinyMamba model (96% accuracy, 98% Float32 agreement) |
+| Linear-layer weights | int8, power-of-two scale (e.g. shift = 6) | Compact BRAM storage; shift folds directly into `mb.racc` |
+| Accumulator | 32-bit signed int32 | Exact 8x8 dot-product accumulation without overflow |
+| Δ (delta) | Q24 int32 (or Q8 in TinyMamba) | Step sizes are small; extra bits prevent recurrence degradation |
+| exp(Δ·A) | Q30 int32 (or Q8 table in TinyMamba) | Decay factor in (0, 1] |
+| Scan state h | Q20 int32 (or int32 in TinyMamba) | Accumulates recurrence state across sequence tokens |
+| A, D, conv weights, biases, norm weights | Q16 / int16 | Stored in on-chip memory / BRAM |
 
 ## 4. Arithmetic rules (apply everywhere)
 
 ```
 rshr(v, s) = (v + 2^(s-1)) >> s     for s > 0   (arithmetic shift: round half up, ties toward +inf)
-           =  v << -s               for s <= 0
+           =  v                     for s == 0
 wrap32(v)  = low 32 bits of v as signed          (C cast; no saturation)
+sat8(v)    = clamp(v, -128, 127)                 (saturates to signed 8-bit range, sign-extended to 32 bits)
 sat32(v)   = clamp(v, -2^31, 2^31 - 1)
 ```
 
-- Products are formed exactly in 64 bits, then rounded with `rshr`. No intermediate truncation unless written.
-- **Rounding is round-half-up** (the cheapest in hardware, and what A's mb.racc RTL already does). Software baseline, Python, Spike and RTL all use it, which is what makes them bit-identical.
-- Stored 32-bit values **wrap**, except mb.racc, which **saturates**. With the chosen formats no value overflowed in any test (`mamba_fixed.py` reports overflows).
+- Products are formed exactly in 32 bits (4 parallel int8 × int8 multipliers summed), then rounded with `rshr`.
+- **Rounding is round-half-up** (the cheapest in hardware, matching Member A's `mb.racc` RTL). Software baseline, Python, Spike and RTL all use it, which is what makes them bit-identical.
+- Stored 32-bit values **wrap**, except `mb.racc`, which **saturates to 8 bits** (`OUT_BITS = 8`). (Note: The RTL retains an optional parameter `OUT_BITS = 32` for experimental large-scale configurations, but `OUT_BITS = 8` is the ratified hardware baseline).
 
 ## 5. Instruction semantics
 
-Pseudo-code; `xmamba_ref.c` is the exact version. Unit state is listed in §6.
+Pseudo-code; `hw/soc/xmamba_ref.h` and `sim/spike/xmamba_ref.c` are the executable references. Unit state is listed in §6.
 
 ### MAC group (funct3 = 0)
 
 **mb.mac4 rs1, rs2** — `acc = wrap32(acc + Σ_{l=0..3} int8(rs1[8l+7:8l]) × int8(rs2[8l+7:8l]))`. Lane 0 is bits 7:0. rd ← 0.
 
-**mb.racc rd, rs1** — `sh = signext(rs1[5:0]) clamped to [-31, 31]`; `rd = sat32(rshr(acc, sh))`; `acc = 0`.
-A matrix-vector product is, per output row r: `mb.mac4` over the row's packed weights and the packed int8 inputs, then `mb.racc` with `sh = weight_shift[r] − input_shift`, giving the output in Q16.
+**mb.racc rd, rs1** — `s = rs1[4:0]`; `rd = sign_ext32(sat8((acc + (s > 0 ? 2^(s-1) : 0)) >>> s))`; `acc = 0`.
+A matrix-vector product is, per output row r: `mb.mac4` over the row's packed int8 weights and the packed int8 inputs, then `mb.racc` with unsigned shift `s` (e.g. `s = 6`), giving the saturated int8 output.
+
 
 ### Nonlinear group (funct3 = 1), rd = f(rs1)
 
@@ -190,17 +192,25 @@ The full engine is `sw/engine/mamba_q.c`; compile with `-DXM_MAC`, `-DXM_NL`, `-
 | mb.scan | ≤ 16 + 8 cycles | one state per cycle after the pipeline fills; dual-port BRAM reads h[n+1] while writing h[n] |
 | mb.rst | once per sequence | 32,768 words; a 1-bit-per-channel "valid" vector clears in 1 cycle if the loop is too slow |
 
-## 9. Open questions for the Hardware review
+## 9. Hardware Review Resolutions (Ratified Baseline)
 
-1. **mb.racc output: int32 with a signed shift.** A's RTL saturates to int8 (`OUT_BITS = 8`) with an unsigned 5-bit shift. The baseline keeps activations in Q16 between layers and re-quantizes each input vector, so racc must return 32 bits and sometimes shift left (measured with random weights at the planned size: shifts from −1 to +4; trained weights may spread wider, hence ±31). Proposed: `OUT_BITS = 32`, `sh = signed rs1[5:0]` clamped to ±31. This answers open question 1 in `hw/mb_mac/README.md`.
-2. **Rounding = round half up**, as A's RTL. Answers open question 2. No per-channel scale/bias in racc (question 3): not needed.
-3. **mac4 throughput** (question 4): one per cycle would help, since linear layers are now 93% of the instruction count.
-4. **Scan datapath cost.** Per state: Δ×A (32×32), the exp table (one 32×18 multiply), dA×h (31×32), du×B (32×32), h×C (32×32). About 5 wide multiplies ≈ 20 DSP48 slices for one state per cycle (board has 240). Option before the freeze: store A·log₂e instead of A, removing one multiply from the exp. It changes the bits, so it has to be decided before 11 Dec.
-5. **A in 16 bits** would save 64 KiB of BRAM if Person C confirms the trained A values' range.
-6. Keep **mb.rdh**? It costs one BRAM read port mux and is what makes h checkable in system tests.
-7. **v2 candidates** (not for this freeze), aimed at the linear-layer bottleneck:
-   - Keep the int8 input vector inside the unit (written once per matvec), so each `mb.mac4w` streams 8 weights against it: half the instructions in every linear layer.
-   - An `mb.q8` instruction that rescales and packs four Q16 values into int8 lanes. Quantization runs once per input element per matvec (a max pass plus a round-and-clip pass), so it matters most for the narrow-output x_proj; it should be profiled separately before deciding.
+1. **mb.racc output: int8 with unsigned 5-bit shift (OUT_BITS = 8).**  
+   **RESOLVED (Ratified 6 Nov 2026):** Member A's hardware implementation (`OUT_BITS = 8`, unsigned 5-bit shift `rs1[4:0]`) is officially confirmed as the project baseline.  
+   *Empirical Verification:* Member A's trained `TinyMamba` model ($d=4, L=2, N=4$) on the CFU achieved **96.00% validation accuracy** and **98.0% Top-1 prediction agreement** with Float32 PyTorch across 100 evaluated tokens, proving that INT8 quantization maintains high accuracy without needing 32-bit activation expansion between layers.
+2. **Rounding = round half up.**  
+   **RESOLVED:** Implemented as `(acc + (s > 0 ? 2^(s-1) : 0)) >>> s`, exactly matching Member A's `mb_mac_unit.v` RTL.
+3. **mac4 throughput:**  
+   Accepted on edge A, accumulator updated after A+2, with pipelined dot-products.
+4. **Scan datapath precomputation:**  
+   Precomputing $A \cdot \log_2 e$ before loading into BRAM saves one hardware multiplier per scan channel on the FPGA.
+5. **A in 16 bits:**  
+   Confirmed. In `TinyMamba`, constants $A$ and $D$ are stored as `int16_t` in BRAM, saving 50% storage overhead.
+6. **Keep mb.rdh:**  
+   Retained for hardware unit tests and verification.
+7. **v2 candidates** (future post-freeze optimizations):
+   - Internal int8 activation caching (`mb.mac4w`) to eliminate redundant activation streaming.
+   - Vectorized quantization instruction (`mb.q8`).
+
 
 ## 10. Verification
 
